@@ -2,22 +2,10 @@ package converter
 
 import java.lang.IllegalArgumentException
 import java.lang.NumberFormatException
+import java.math.BigInteger
 import kotlin.math.pow
-const val BASE_16 = 16
-const val BASE_10 = 10
-const val BASE_8 = 8.0
-const val BASE_2 = 2.0
 
-enum class HEX(val num: Int) {
-    A(10),
-    B(11),
-    C(12),
-    D(13),
-    E(14),
-    F(15)
-}
-
-// Do not delete this line
+const val DIFF = 55
 
 fun main() {
    init()
@@ -25,148 +13,66 @@ fun main() {
 
 fun init() {
     while (true) {
-        println("Do you want to convert /from decimal or /to decimal? (To quit type /exit)")
-        when (readln()) {
-            "/from" -> {
-                fromDecimal()
-            }
+        println("Enter two numbers in format: {source base} {target base} (To quit type /exit)")
+        val a = readln()
+        if (a == "/exit") break
+        val (from, to) = a.split(" ").map { it.toInt() }
 
-            "/to" -> {
-                toDecimal()
-            }
+        while (true) {
+            println("Enter number in base $from to convert to base $to (To go back type /back) ")
+            val b = readln()
+            if (b == "/back")
+                break
 
-            "/exit" -> break
+            if (from != 10 && to != 10 ) {
+                val baseTen = toBaseTen(b, from.toDouble())
+                println("Conversion result: ${fromBaseTen(baseTen, to)}\n")
+            } else if (to == 10)
+                println("Conversion result: ${toBaseTen(b, from.toDouble())}\n")
+            else
+                println("Conversion result: ${fromBaseTen(b.toBigInteger(), to)}\n")
         }
-    }
 
-
-}
-
-fun fromDecimal() {
-    print("Enter number in decimal system: ")
-    val decimal = readln().toInt()
-    print("Enter target base: ")
-
-    when (readln().toInt()) {
-        BASE_2.toInt() -> {
-            println("Conversion result: ${decimalToBinary(decimal)}\n")
-        }
-        BASE_8.toInt() -> {
-            println("Conversion result: ${decimalToOctal(decimal)}\n")
-        }
-        BASE_16 -> {
-            println("Conversion result: ${decimalToHex(decimal)}\n")
-        }
     }
 }
+fun fromBaseTen(input: BigInteger, to: Int): String {
+    val list = mutableListOf<BigInteger>()
+    val zero = BigInteger.ZERO
+    val divisor = to.toBigInteger()
+    val nine = "9".toBigInteger()
+    val diff = DIFF.toBigInteger()
+    var copy = input
+    var ans = ""
+   while (copy > zero) {
+       val remainder = copy % divisor
+       list.add(remainder)
+       copy /= divisor
+   }
 
-fun toDecimal() {
-    print("Enter source number: ")
-    val sourceNumber = readln()
-    print("Enter source base: ")
-    when (readln().toInt()) {
-        BASE_16 -> {
-            println("Conversion to decimal result: ${hexToDecimal(sourceNumber.uppercase())}\n")
-        }
-        BASE_8.toInt() -> {
-            println("Conversion to decimal result: ${octalToDecimal(sourceNumber.toInt())}\n")
-
-        }
-        BASE_2.toInt() -> {
-            println("Conversion to decimal result: ${binaryToDecimal(sourceNumber)}\n")
-        }
+    for (i in list.size - 1 downTo 0) {
+      if (list[i] > nine) {
+          val a = list[i] + diff
+          ans += a.toInt().toChar()
+      } else
+          ans += list[i]
     }
-
+    return ans
 }
 
-fun decimalToBinary(num: Int): String {
-    var q = num
-    var out = ""
-    while (q > 0) {
-        out += q % 2
-        q /= 2
+fun toBaseTen(input: String, from: Double): BigInteger {
+    var index = 0.0
+    var ans = "0".toBigDecimal()
+    for (i in input.length - 1 downTo 0) {
+        val curr = input[i]
+        ans += if (!curr.isInt()) {
+            val num = curr.uppercaseChar().code - DIFF
+            (from.pow(index) * num).toBigDecimal()
+        } else
+            (from.pow(index) * curr.digitToInt()).toBigDecimal()
+        index++
     }
-
-    return out.reversed()
+    return ans.toBigInteger()
 }
-
-fun decimalToOctal(num: Int): Int {
-    var out = ""
-    var q = num
-    while (q > 0) {
-        out += q % 8
-        q /= 8
-    }
-    return out.reversed().toInt()
-}
-
-fun octalToDecimal(num: Int): Int {
-    var out = 0.0
-    var q = num
-    var p = 0
-    while (q > 0) {
-        val r = q % BASE_10
-        out += r * BASE_8.pow(p++)
-        q /= BASE_10
-    }
-    return out.toInt()
-}
-
-fun binaryToDecimal(num: String): Int {
-    val reversed = num.reversed()
-    var out = 0.0
-    var p = 0
-    for (bit in reversed) {
-        out += bit.digitToInt() * BASE_2.pow(p++)
-    }
-    return out.toInt()
-}
-
-fun decimalToHex(num: Int): String {
-    var out = ""
-    val binary = decimalToBinary(num)
-    var chunked = ""
-    var i = 1
-
-    for (j in binary.length - 1 downTo 0) {
-        chunked += binary[j]
-        if (i++ == 4 || (chunked.isNotEmpty() && j == 0)) {
-            val r = chunked.reversed()
-            val d = binaryToDecimal(r)
-            if (d > 9) {
-                for (v in HEX.values()) {
-                    if (v.num == d) out+= v.name
-                }
-            } else out += d
-            chunked = ""
-            i = 1
-        }
-    }
-    return out.reversed()
-}
-
-fun hexToDecimal(input: String): Int {
-    var binary = ""
-    for (i in input) {
-        if (!i.isInt()) {
-            for (j in HEX.values()) {
-                if (j.name == i.toString()) {
-                    binary += decimalToBinary(j.num)
-                }
-            }
-        } else{
-            val res = decimalToBinary(i.digitToInt())
-            if (res.length < 4) {
-                repeat (4 - res.length) {
-                    binary += "0"
-                }
-                binary += res
-            } else binary += res
-        }
-    }
-    return binaryToDecimal(binary)
-}
-
 fun Char.isInt(): Boolean {
     return try {
         this.digitToInt()
